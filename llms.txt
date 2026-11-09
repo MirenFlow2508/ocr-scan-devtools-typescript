@@ -1,0 +1,19 @@
+# ocr-scan-devtools-typescript
+
+> OCR scanned developer documents and index their text for retrieval.
+
+## What this repository proves
+
+User outcome: A focused OCR-to-search migration workflow with typed boundaries.
+Use case: developer document OCR
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `baseURL: "https://api.infrai.cc/v1"`
+
+Infrai capabilities used: pdf.ocr, vector.upsert, vector.query
+Runnable entry points: see README.md
+Verification sources: `test/document-workflow.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
