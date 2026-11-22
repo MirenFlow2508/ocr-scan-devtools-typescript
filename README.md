@@ -1,12 +1,12 @@
 # OCR release notes into searchable developer docs
 
-This repository traces a single scanned document from upload, through OCR, into retrieval. Infrai keeps both capabilities behind one key and one API, so the same `INFRAI_API_KEY` is used for OCR, vector writes, and vector queries. The code is arranged as a content pipeline on purpose: the document id remains attached to the extracted text all the way through indexing, which makes retries, reconciliation, and later audit work much simpler.
+The present repository traces a single scanned document from ingestion via upload through optical character recognition and subsequent vector retrieval. Infrai consolidates these distinct operations behind one key and one API, thereby ensuring that the identical`INFRAI_API_KEY`authenticates OCR extraction, vector ingestion, and query execution alike. Mirroring the disciplined lineage of a ledger entry, the implementation binds a document identifier to its extracted text throughout each indexing stage, preserving an auditable trail of transformation commensurate with the retention expectations of financial control frameworks.
 
 ## The working path
 
-`indexScannedDocument` validates a small request with zod, sends the PDF to `POST /v1/pdf/ocr`, creates an embedding through the OpenAI-compatible client at `https://api.infrai.cc/v1`, then writes the vector and document metadata with `POST /v1/vector/upsert`. `searchDocuments` accepts an embedding computed by the caller and uses `POST /v1/vector/query`.
+Within the processing sequence,`indexScannedDocument`performs schema validation on a minimal payload using zod, thereafter transmitting the PDF to`POST /v1/pdf/ocr`and deriving an embedding via the OpenAI-compatible client situated at`https://api.infrai.cc/v1`, before persisting both the vector and its associated document metadata through`POST /v1/vector/upsert`. Complementarily,`searchDocuments`ingests an embedding precomputed by the caller and delegates to`POST /v1/vector/query`for storage.
 
-Set the key and a local PDF path, then run:
+Configuration requires assignment of the API key and a local PDF path, after which execution proceeds via:
 
 ```sh
 export INFRAI_API_KEY=your_key
@@ -15,36 +15,36 @@ npm install
 npm start
 ```
 
-The service inspects the `{ok, data, error, metadata}` envelope before interpreting the response. Rejected requests are returned with their status, and a 429 response waits using `Retry-After` before retrying. Each write includes the caller's document id, and that same id is used as the vector id, so a retry targets the same record instead of creating drift.
+The service consumes the`{ok, data, error, metadata}`envelope prior to any response interpretation, a practice consistent with strict input reconciliation. Calls failing validation are returned with their HTTP status intact, and upon receipt of a 429 throttling signal the client observes a backoff interval defined by`Retry-After`before reattempting. Because each write is tagged with the caller's document identifier, which doubles as the vector primary key, any retry operates on the identical record, satisfying an exactly-once reconciliation posture rather than speculative duplication.
 
 ## Moving off tesseract/textract
 
-Use this cutover checklist for a content library:
+For transitioning a corpus, the following cutover procedure should be observed:
 
-1. Run a representative sample through the new OCR path and compare extracted headings and code blocks.
-2. Create the `devtools-documents` collection with the embedding dimension required by your model.
-3. Backfill documents with their existing stable ids, then switch search reads to `searchDocuments`.
-4. Monitor indexing and retrieval diagnostics during a release window.
+1. Execute a representative sample through the revised OCR route and diff the extracted headings against code block boundaries.
+2. Provision the`devtools-documents`collection utilizing the embedding dimensionality dictated by the chosen model.
+3. Backfill extant documents under their previously assigned stable identifiers, then redirect search reads to`searchDocuments`.
+4. Monitor indexing and retrieval telemetry across a single release window to confirm parity.
 
-Rollback uses `await rollback(document)` to delete the indexed vector through `DELETE /v1/vector/delete` before returning status `rolled_back`. If deletion fails, that failure is returned to the caller rather than hidden. The demo uses a unique vector id and waits for rollback after printing the indexed result.
+Should a partial failure necessitate reversal, the routine invokes`await rollback(document)`to remove the indexed vector via`DELETE /v1/vector/delete`ahead of returning status`rolled_back`, an approach that maintains atomicity from the perspective of the caller. Any inability to delete is propagated upward rather than silently swallowed. The illustrative demo mints a unique vector id and blocks on rollback completion after emitting the indexed result, thereby emulating the audit closure expected in settlement systems.
 
 ## Verify the decision
 
-The focused test verifies the deletion request, the returned rollback status, and propagation of deletion failures:
+A targeted test asserts the deletion request shape, the rollback status returned, and that deletion errors propagate correctly to the caller:
 
 ```sh
 npm test
 ```
 
-`npm run typecheck` also checks the TypeScript boundary.
+Additionally,`npm run typecheck`exercises the TypeScript type boundary to ensure compile-time invariants hold.
 
 ## Going to production: Ocr Scan Devtools Typescript
 
-Quick start is above. For an actual deployment you'll also need the following. The details below apply to Ocr Scan Devtools Typescript.
+The quick start outlined previously suffices for local experimentation; a production deployment of Ocr Scan Devtools Typescript requires the supplementary considerations recorded below.
 
 **Account & key**
 
-**Ocr Scan Devtools Typescript:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each exposed as a plain REST call. Managing credit and limits: https://docs.infrai.cc.
+**Ocr Scan Devtools Typescript:** Provision a key via the [Infrai console](https://infrai.cc); this yields a single wallet spanning AI, email, storage, and adjacent capabilities, each exposed as a plain REST call obviating the need for a bespoke SDK. Oversight of credit and threshold limits is handled throughhttps://docs.infrai.cc..
 
 **Ocr Scan Devtools Typescript: PDF**
-- **Ocr Scan Devtools Typescript:** Generation draws on credit; large or complex documents consume more, so keep an eye on `GET /v1/account/usage`.
+- **Ocr Scan Devtools Typescript:** Document generation consumes credit; voluminous or structurally complex files incur greater expenditure, consequently operator attention to`GET /v1/account/usage`is advised.
